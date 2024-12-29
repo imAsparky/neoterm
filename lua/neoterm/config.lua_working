@@ -1,0 +1,95 @@
+-- lua/neoterm/config.lua
+local M = {}
+
+-- Default configuration
+M.defaults = {
+  venv_name = 'venv',
+}
+
+-- Current configuration
+M.options = {}
+
+-- Load or create config file
+local function load_config()
+  local config_path = vim.fn.stdpath 'data' .. '/neoterm_config.json'
+  local f = io.open(config_path, 'r')
+  if f then
+    local content = f:read '*all'
+    f:close()
+    local ok, config = pcall(vim.json.decode, content)
+    if ok then
+      return config
+    end
+  end
+  return { venv_name = M.defaults.venv_name }
+end
+
+-- Save config to file
+local function save_config(config)
+  local config_path = vim.fn.stdpath 'data' .. '/neoterm_config.json'
+  local f = io.open(config_path, 'w')
+  if f then
+    f:write(vim.json.encode(config))
+    f:close()
+  end
+end
+
+-- UI notification logic
+local function notify_venv_update(name, is_default)
+  local message = is_default and 'No input provided - using default virtual environment name: ' .. name
+    or 'Virtual environment name set to: ' .. name .. ' (saved for future sessions)'
+
+  vim.schedule(function()
+    vim.notify(message, vim.log.levels.INFO)
+  end)
+end
+
+-- Update venv name
+function M.set_venv(name)
+  M.options.venv_name = name
+  save_config { venv_name = name }
+  vim.cmd 'echo ""' -- Clear command line
+  notify_venv_update(name, false)
+end
+
+-- Configure venv interactively
+function M.configure_venv()
+  local current_name = M.options.venv_name
+
+  -- Get user input
+  local input = vim.fn.input('Enter venv name: ', current_name, 'file')
+  vim.cmd 'echo ""' -- Clear command line immediately after input
+
+  -- Handle the input
+  if input and input ~= '' then
+    M.set_venv(input)
+  else
+    M.set_venv(M.defaults.venv_name)
+    notify_venv_update(M.defaults.venv_name, true)
+  end
+end
+
+-- Initialize configuration
+function M.setup(opts)
+  -- Merge defaults with saved config and user opts
+  local saved_config = load_config()
+  M.options = vim.tbl_deep_extend('force', M.defaults, saved_config or {}, opts or {})
+end
+
+if vim.env.DEVELOPING then
+  vim.api.nvim_create_autocmd('BufWritePost', {
+    pattern = '*/neoterm/**/*.lua',
+    callback = function()
+      -- Unload all loaded modules that match your plugin's pattern
+      for module, _ in pairs(package.loaded) do
+        if module:match '^neoterm' then
+          package.loaded[module] = nil
+        end
+      end
+      -- Reload setup
+      require('neoterm').setup()
+    end,
+  })
+end
+
+return M

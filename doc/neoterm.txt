@@ -1,0 +1,228 @@
+*neoterm.txt*    For Neovim >= 0.8.0    Last change: 2024 March 28
+
+                                                                *neoterm*
+                            NEOTERM
+                A floating terminal with venv support
+
+==============================================================================
+CONTENTS                                                      *neoterm-contents*
+
+    1. Introduction .......... |neoterm-introduction|
+    2. Requirements .......... |neoterm-requirements|
+    3. Installation .......... |neoterm-installation|
+    4. Configuration ......... |neoterm-configuration|
+    5. Commands .............. |neoterm-commands|
+    6. Mappings .............. |neoterm-mappings|
+    7. API ................... |neoterm-api|
+
+==============================================================================
+1. INTRODUCTION                                          *neoterm-introduction*
+
+Neoterm is a Neovim plugin that provides a floating terminal with enhanced
+virtual environment support. It allows you to easily manage terminal instances
+and Python virtual environments from within Neovim.
+
+==============================================================================
+2. REQUIREMENTS                                          *neoterm-requirements*
+
+- Neovim >= 0.8.0
+- which-key.nvim (https://github.com/folke/which-key.nvim)
+
+==============================================================================
+3. INSTALLATION                                          *neoterm-installation*
+
+Neoterm requires which-key.nvim to be installed and available. The installation
+method varies depending on your plugin manager.
+
+Using lazy.nvim (recommended):
+>
+    {
+      "imAsparky/neoterm",
+      dependencies = {
+        "folke/which-key.nvim",
+      },
+      opts = {
+        venv_name = "venv", -- default virtual environment name
+      },
+    }
+<
+
+Using packer.nvim:
+>
+    use {
+      'imAsparky/neoterm',
+      requires = {'folke/which-key.nvim'},
+      config = function()
+        require('neoterm').setup({
+          venv_name = "venv", -- default virtual environment name
+        })
+      end
+    }
+<
+
+Using vim-plug:
+First install which-key:
+>
+    Plug 'folke/which-key.nvim'
+<
+Then install neoterm:
+>
+    Plug 'imAsparky/neoterm'
+<
+After installing, in your init.vim/init.lua:
+>
+    lua require('neoterm').setup({
+      venv_name = "venv", -- default virtual environment name
+    })
+<
+
+Note: When not using lazy.nvim, ensure that which-key.nvim is loaded before
+neoterm. The plugin will display an error message if which-key.nvim is not
+found.
+
+==============================================================================
+4. CONFIGURATION                                        *neoterm-configuration*
+
+Neoterm can be configured during setup:
+>
+    require("neoterm").setup({
+        venv_name = "venv"  -- Default virtual environment name
+    })
+<
+
+Configuration Options ~
+                                                       *neoterm-config-options*
+
+    venv_name    string    Name of the virtual environment directory
+                          Default: "venv"
+
+Development Mode ~
+                                                    *neoterm-development-mode*
+
+Neoterm includes a development mode that can be enabled by setting the
+DEVELOPING environment variable. This mode provides automatic plugin reloading
+for easier development.
+
+To enable development mode:
+>
+    # Either export the variable first
+    export DEVELOPING=1
+    nvim
+
+    # Or enable it directly when launching nvim
+    DEVELOPING=1 nvim
+<
+
+When development mode is enabled, Neoterm will:
+    - Monitor all plugin Lua files for changes
+    - Automatically unload all plugin modules on file save
+    - Reload the plugin setup
+
+This allows you to modify the plugin code and see changes immediately without
+needing to manually reload Neovim.
+
+Example development workflow:
+>
+    # In your shell
+    export DEVELOPING=1
+    nvim
+
+    # In Neovim
+    # Edit plugin files
+    # Changes take effect immediately on save
+<
+
+Note: Development mode is intended for plugin development only and should not
+be enabled in regular usage.
+
+Help Tags ~
+                                                    *neoterm-help-tags*
+
+When modifying the documentation, you need to regenerate the help tags for
+changes to take effect in Neovim's help system. From within Neovim:
+>
+    :helptags doc/
+
+
+This command generates a 'tags' file in your plugin's doc directory that maps
+each *tag* in your documentation to its location in the help files. The tags
+file enables Neovim's help system to quickly locate and display documentation
+when users use commands like :help neoterm-development-mode.
+
+You should regenerate help tags whenever you:
+    - Add new tags to your documentation
+    - Change existing tags
+    - Add new help files
+
+Note: Plugin managers typically run :helptags during installation, but as a
+developer, you'll want to run it after making documentation changes to test
+that your help system works correctly.
+
+==============================================================================
+5. COMMANDS                                                *neoterm-commands*
+
+                                                                *:Neoterm*
+:Neoterm
+    Toggle the floating terminal window.
+
+                                                           *:NeotermSetVenv*
+:NeotermSetVenv {name}
+    Set the virtual environment directory name to {name}.
+
+                                                              *:NeotermVENVW*
+:NeotermVENVW
+    Activate a virtual environment in the working directory.
+
+                                                              *:NeotermVENVP*
+:NeotermVENVP
+    Activate a virtual environment in the parent directory.
+
+                                                              *:NeotermCONF*
+:NeotermCONF
+    Configure virtual environment folder name interactively.
+
+                                                               *:NeotermEBAL*
+:NeotermEBAL
+    Edit bash aliases.
+
+                                                               *:NeotermEBRC*
+:NeotermEBRC
+    Edit bashrc file.
+
+==============================================================================
+6. MAPPINGS                                                *neoterm-mappings*
+
+Default key mappings (all mappings start with <leader>n):
+
+    nt    Toggle terminal window
+    vw    Activate workspace virtual environment
+    vp    Activate parent directory virtual environment
+    cn    Configure virtual environment name
+    aa    Edit bash aliases
+    ar    Edit bashrc file
+
+To disable default mappings, see |neoterm-configuration|.
+
+==============================================================================
+7. API                                                        *neoterm-api*
+
+Neoterm provides the following Lua functions:
+
+                                                     *neoterm.setup()*
+setup({opts})
+    Initialize neoterm with the given options.
+    Parameters: ~
+        {opts} Table of configuration options (see |neoterm-config-options|)
+
+                                                     *neoterm.toggle()*
+toggle()
+    Toggle the floating terminal window.
+
+                                                     *neoterm.set_venv()*
+set_venv({name})
+    Set the virtual environment name.
+    Parameters: ~
+        {name} String name of the virtual environment directory
+
+==============================================================================
+ vim:tw=78:ts=8:ft=help:norl:

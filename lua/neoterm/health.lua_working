@@ -1,0 +1,35 @@
+local M = {}
+local health = vim.health or require 'health'
+
+function M.check()
+  health.start 'neoterm'
+
+  -- Check Neovim version
+  if vim.fn.has 'nvim-0.8.0' == 1 then
+    health.ok 'Neovim version >= 0.8.0'
+  else
+    health.error 'Neovim version must be >= 0.8.0'
+  end
+
+  -- Check for which-key.nvim
+  local has_which_key = pcall(require, 'which-key')
+  if has_which_key then
+    health.ok 'which-key.nvim is installed'
+  else
+    health.warn 'which-key.nvim is not installed (required for keymaps)'
+  end
+
+  -- Check terminal capabilities (Neovim specific)
+  if vim.fn.executable 'nvim' == 1 then
+    -- In Neovim, terminal is always available if these functions exist
+    if vim.fn.exists '*termopen' == 1 and vim.fn.exists '*jobstart' == 1 then
+      health.ok 'Terminal support available'
+    else
+      health.error 'Terminal support not available'
+    end
+  else
+    health.error 'Not running in Neovim'
+  end
+end
+
+return M
