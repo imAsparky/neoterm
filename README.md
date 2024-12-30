@@ -78,3 +78,43 @@ require("neoterm").setup({
 ## License
 
 Apache 2.0
+
+## Neoterm Flow Chart
+
+```mermaid
+flowchart TD
+    A[Plugin Load] --> B[init.lua setup]
+    B --> C{Which-key Check}
+    C -->|Not Found| D[Error Notification]
+    C -->|Found| E[config.setup]
+    
+    E --> F[Load/Create Config File]
+    E --> G[Merge Defaults]
+    E --> H[Validate Config]
+    
+    B --> I[command_registry.setup]
+    I --> J[keymaps.setup]
+    J --> K[Register Base Keymap]
+    J --> L[Register Groups]
+    
+    I --> M[process_config]
+    M --> N[Register Commands]
+    N --> O[Create Keymaps]
+    N --> P[Create Vim Commands]
+    
+    subgraph Configuration Flow
+    F
+    G
+    H
+    end
+    
+    subgraph Command Registration Flow
+    K
+    L
+    O
+    P
+    end
+
+    style Configuration Flow fill:#f9f,stroke:#333
+    style Command Registration Flow fill:#bbf,stroke:#333
+```
