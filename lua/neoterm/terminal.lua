@@ -1,7 +1,6 @@
 -- lua/neoterm/terminal.lua
 local M = {}
 local config = require 'neoterm.config'
-local commands = require 'neoterm.commands'
 
 -- Plugin state
 local state = {
@@ -90,12 +89,18 @@ local function create_float_term(opts)
 end
 
 -- Function to run terminal command
-local function run_command(command_name)
-  local cmd = commands.term_commands[command_name]
+function M.run_command(command_name)
+  local cmd = config.options.commands[command_name]
   if not cmd then
     vim.notify('Unknown command: ' .. command_name, vim.log.levels.ERROR)
     return
   end
+  -- local function run_command(command_name)
+  --   local cmd = commands.term_commands[command_name]
+  --   if not cmd then
+  --     vim.notify('Unknown command: ' .. command_name, vim.log.levels.ERROR)
+  --     return
+  --   end
 
   -- Handle non-terminal commands differently
   if cmd.no_term then
@@ -154,21 +159,6 @@ function M.toggle()
   else
     vim.api.nvim_win_hide(state.floating.win)
   end
-end
-
--- Setup function
-function M.setup()
-  -- Create commands for each predefined terminal command
-  for name, cmd in pairs(commands.term_commands) do
-    vim.api.nvim_create_user_command('Neoterm' .. name:upper(), function()
-      run_command(name)
-    end, {
-      desc = cmd.desc,
-    })
-  end
-
-  -- Set up which-key mappings
-  commands.setup_which_key()
 end
 
 return M

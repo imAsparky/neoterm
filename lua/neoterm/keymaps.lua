@@ -1,59 +1,19 @@
 -- lua/neoterm/keymaps.lua
 local M = {}
+local config = require 'neoterm.config'
 
--- Store all our keymaps in one place
-M.maps = {
-  -- Base group
-  base = {
-    name = '[N]eoterm',
-    prefix = '<leader>n',
-    t = { cmd = ':Neoterm<CR>', desc = 'Floating Terminal' },
-  },
-  -- Command groups from commands.lua
-  groups = {
-    a = { name = 'Run a bash alias' },
-    c = { name = 'Edit configuration' },
-    d = { name = 'Django commands' },
-    v = { name = 'Virtual environment' },
-  },
-  -- Individual commands
-  commands = {
-    -- Will be populated from commands.term_commands
-  },
-  -- Utility commands
-  utils = {
-    c = { cmd = ':NeotermCleanup<CR>', desc = 'Cleanup configuration' },
-  },
+-- Store base keymap configuration
+M.base = {
+  name = '[N]eoterm',
+  prefix = '<leader>' .. config.options.key_prefix,
+  t = { cmd = ':Neoterm<CR>', desc = 'Neoterm Terminal' },
 }
 
-function M.setup()
-  local ok, wk = pcall(require, 'which-key')
-  if not ok then
-    return
-  end
+M.maps = {
+  commands = {}, -- Will store registered commands
+}
 
-  -- Register base group
-  wk.add {
-    { M.maps.base.prefix, name = M.maps.base.name },
-    { M.maps.base.prefix .. 't', M.maps.base.t.cmd, desc = M.maps.base.t.desc, mode = 'n' },
-  }
-
-  -- Register command groups
-  for prefix, group_info in pairs(M.maps.groups) do
-    wk.add {
-      { M.maps.base.prefix .. prefix, group = group_info.name, mode = 'n' },
-    }
-  end
-
-  -- Register utility commands
-  for key, cmd_info in pairs(M.maps.utils) do
-    wk.add {
-      { M.maps.base.prefix .. key, cmd_info.cmd, desc = cmd_info.desc, mode = 'n' },
-    }
-  end
-end
-
--- Function to register command mappings
+-- Function to register individual command
 function M.register_command(name, command)
   -- Use the specified keys or fall back to first letter of command name
   local key_sequence = command.keys or name:sub(1, 1)
@@ -63,16 +23,39 @@ function M.register_command(name, command)
   }
 end
 
--- Function to setup command mappings
+function M.setup()
+  local ok, wk = pcall(require, 'which-key')
+  if not ok then
+    return
+  end
+
+  -- Register base group
+  wk.add {
+    { M.base.prefix, name = M.base.name },
+    { M.base.prefix .. 't', M.base.t.cmd, desc = M.base.t.desc, mode = 'n' },
+  }
+
+  -- Register groups
+  for group_key, group_info in pairs(config.options.groups) do
+    wk.add {
+      { M.base.prefix .. group_key, group = group_info.name, mode = 'n' },
+    }
+  end
+end
+
+-- Function to register command mappings
 function M.setup_command_mappings()
   local ok, wk = pcall(require, 'which-key')
   if not ok then
     return
   end
 
-  for key, cmd_info in pairs(M.maps.commands) do
+  -- Register all commands from config
+  for name, cmd_info in pairs(config.options.commands) do
+    -- Use the specified keys or fall back to first letter of command name
+    local key_sequence = cmd_info.keys or name:sub(1, 1)
     wk.add {
-      { M.maps.base.prefix .. key, cmd_info.cmd, desc = cmd_info.desc, mode = 'n' },
+      { M.base.prefix .. key_sequence, ':Neoterm' .. name:upper() .. '<CR>', desc = cmd_info.desc, mode = 'n' },
     }
   end
 end

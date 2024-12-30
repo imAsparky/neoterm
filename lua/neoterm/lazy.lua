@@ -9,5 +9,6 @@ return {
   end,
   opts = {
     venv_name = 'venv', -- default virtual environment folder name
+    key_prefix = 'n', -- default which-key menu prefix
   },
 }
