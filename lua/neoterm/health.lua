@@ -14,65 +14,57 @@ local function get_leader_display()
   end
 end
 
--- Get all existing leader prefixes using built-in functions
-local function get_used_prefixes()
-  local used = {}
+-- Check if there are any mappings starting with leader + prefix
+local function check_prefix_mappings(prefix)
   local leader = get_leader_display()
+  local mapping = leader .. prefix
 
-  -- For each possible letter, check if it's mapped
-  for letter in string.gmatch('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', '.') do
-    local mapping = leader .. letter
-    -- First check if there's an exact mapping
-    local map_info = vim.fn.maparg(mapping, 'n', false, true)
+  -- Get all mappings and filter for ones starting with our prefix
+  local all_maps = vim.fn.execute 'verbose map'
+  local existing_mappings = {}
 
-    -- Then check if there are any mappings starting with this prefix
-    local has_prefix = vim.fn.mapcheck(mapping, 'n') ~= ''
-
-    if map_info.lhs or has_prefix then
-      used[letter:lower()] = map_info.desc or map_info.rhs or 'has mappings'
-    end
-  end
-
-  return used
-end
-
--- Find available prefixes
-local function get_available_prefixes(used_prefixes)
-  local available = {}
-  -- Create list of common prefixes that might make sense for a terminal
-  local preferred = { 't', 'T', 'e', 'x', 'm', 'n', 'r', 'c' }
-
-  -- First check preferred prefixes
-  for _, prefix in ipairs(preferred) do
-    if not used_prefixes[prefix:lower()] then
-      table.insert(available, prefix)
-    end
-  end
-
-  -- If we need more suggestions, check other letters
-  if #available < 3 then
-    for letter in string.gmatch('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', '.') do
-      if not used_prefixes[letter:lower()] and not vim.tbl_contains(available, letter) then
-        table.insert(available, letter)
-        if #available >= 5 then -- Limit to 5 total suggestions
-          break
-        end
+  -- Split into lines and process each mapping
+  for line in vim.gsplit(all_maps, '\n') do
+    -- Look for lines that start with a mode character (n, v, x, s, o, i, l, c, t)
+    if line:match '^[nvxsoilct]%s+' then
+      -- If this mapping starts with our prefix
+      if line:match(mapping) then
+        table.insert(existing_mappings, line)
       end
     end
   end
 
-  return available
+  return #existing_mappings > 0, table.concat(existing_mappings, '\n')
+end
+
+-- Comprehensive version check function
+local function check_version()
+  local version = vim.version()
+  local required = { 0, 10, 0 }
+  -- First check actual version numbers
+  local version_ok = version.major > required[1] or (version.major == required[1] and version.minor >= required[2])
+  if version_ok then
+    health.ok(string.format('Neovim version %d.%d.%d meets requirements', version.major, version.minor, version.patch))
+  else
+    health.error(
+      string.format(
+        'Neovim version %d.%d.%d does not meet minimum requirement of %d.%d.%d',
+        version.major,
+        version.minor,
+        version.patch,
+        required[1],
+        required[2],
+        required[3]
+      )
+    )
+  end
 end
 
 function M.check()
   health.start 'neoterm'
 
-  -- Check Neovim version
-  if vim.fn.has 'nvim-0.8.0' == 1 then
-    health.ok 'Neovim version >= 0.8.0'
-  else
-    health.error 'Neovim version must be >= 0.8.0'
-  end
+  -- Check version requirements
+  check_version()
 
   -- Check leader key setting
   local leader_display = get_leader_display()
@@ -83,37 +75,17 @@ function M.check()
   if has_which_key then
     health.ok 'which-key.nvim is installed'
   else
-    health.warn 'which-key.nvim is not installed (required for keymaps)'
+    health.warn 'which-key.nvim is not installed (recommended for keymaps)'
   end
 
-  -- Check prefix availability
+  -- Check prefix mappings
   local prefix = (config.options.key_prefix or 'n'):lower()
-  local used_prefixes = get_used_prefixes()
+  local has_mappings, existing_mappings = check_prefix_mappings(prefix)
 
-  if used_prefixes[prefix] then
-    local suggestions = get_available_prefixes(used_prefixes)
-    if #suggestions > 0 then
-      health.warn(
-        string.format(
-          "Prefix '%s%s' is already mapped to: %s\nAvailable alternatives: %s\nAdd\nopts = {\nkey_prefix = '<prefix>'\n}\nin your setup options to change, where prefix is one of the alternative options listed above,\nor another letter you know is not used.",
-          get_leader_display(),
-          prefix,
-          used_prefixes[prefix],
-          table.concat(suggestions, ', ')
-        )
-      )
-    else
-      health.warn(
-        string.format(
-          "Prefix '%s%s' is already mapped to: %s\nConsider changing key_prefix in setup options",
-          get_leader_display(),
-          prefix,
-          used_prefixes[prefix]
-        )
-      )
-    end
+  if has_mappings then
+    health.info(string.format("Found existing mappings starting with '%s%s'. Current mappings:\n%s", get_leader_display(), prefix, existing_mappings))
   else
-    health.ok(string.format("Prefix '%s%s' is available", get_leader_display(), prefix))
+    health.ok(string.format("No existing mappings found for '%s%s'", get_leader_display(), prefix))
   end
 
   -- Check terminal capabilities (Neovim specific)
@@ -122,7 +94,7 @@ function M.check()
     if vim.fn.exists '*termopen' == 1 and vim.fn.exists '*jobstart' == 1 then
       health.ok 'Terminal support available'
     else
-      health.error 'Terminal support not available;swe'
+      health.error 'Terminal support not available'
     end
   else
     health.error 'Not running in Neovim'
