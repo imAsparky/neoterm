@@ -2,17 +2,6 @@
 local M = {}
 local config = require 'neoterm.config'
 
--- Store base keymap configuration
-M.base = {
-  name = '[N]eoterm',
-  prefix = '<leader>' .. config.options.key_prefix,
-  t = { cmd = ':Neoterm<CR>', desc = 'Neoterm Terminal' },
-}
-
-M.maps = {
-  commands = {}, -- Will store registered commands
-}
-
 -- Function to register individual command
 function M.register_command(name, command)
   -- Use the specified keys or fall back to first letter of command name
@@ -24,10 +13,22 @@ function M.register_command(name, command)
 end
 
 function M.setup()
+  -- vim.notify(string.format('OPTIONS in keymaps\n%s', config.options.key_prefix), vim.log.levels.ERROR)
   local ok, wk = pcall(require, 'which-key')
   if not ok then
     return
   end
+
+  -- Store base keymap configuration
+  M.base = {
+    name = '[N]eoterm',
+    prefix = '<leader>' .. config.options.key_prefix,
+    t = { cmd = ':Neoterm<CR>', desc = 'Neoterm Terminal' },
+  }
+
+  M.maps = {
+    commands = {}, -- Will store registered commands
+  }
 
   -- Register base group
   wk.add {

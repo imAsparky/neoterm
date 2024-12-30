@@ -1,18 +1,37 @@
 -- lua/neoterm/config.lua
 local M = {}
 
--- Default configuration
 M.defaults = {
   venv_name = 'venv',
   key_prefix = 'n',
   commands = {
-    -- Default commands can go here
+    venvp = {
+      cmd = function()
+        return {
+          init = vim.o.shell,
+          post_cmd = string.format('cd ../ && source %s/bin/activate && cd -', M.options.venv_name),
+        }
+      end,
+      desc = 'Activate a virtual environment located in parent directory',
+      keys = 'vp',
+      group = 'v',
+    },
+    venvw = {
+      cmd = function()
+        return {
+          init = vim.o.shell,
+          post_cmd = string.format('source %s/bin/activate', M.options.venv_name),
+        }
+      end,
+      desc = 'Activate a virtual environment located in working directory',
+      keys = 'vw',
+      group = 'v',
+    },
   },
   groups = {
-    -- Default groups can go here
+    v = { name = 'Virtual environment' },
   },
 }
-
 -- Current configuration
 M.options = {}
 
@@ -207,6 +226,7 @@ function M.setup(opts)
   end
 
   M.options = merged_config
+  -- vim.notify(string.format('OPTIONS in config\n%s', M.options.key_prefix), vim.log.levels.ERROR)
 end
 
 if vim.env.DEVELOPING then
