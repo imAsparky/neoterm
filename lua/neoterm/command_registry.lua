@@ -1,8 +1,10 @@
 -- lua/neoterm/command_registry.lua
 local M = {}
+
 local config = require 'neoterm.config'
 local keymaps = require 'neoterm.keymaps'
 local terminal = require 'neoterm.terminal'
+local utils = require 'neoterm.utils'
 
 -- Function to process commands and groups from config
 function M.process_config()
@@ -15,12 +17,8 @@ function M.process_config()
       -- Register keymap
       keymaps.register_command(name, command)
 
-      -- Create valid command name (replace underscore with camelCase)
-      local cmd_name = 'Neoterm' .. name
-        :gsub('_(.)', function(c)
-          return c:upper()
-        end)
-        :gsub('^%l', string.upper)
+      -- Create valid command name
+      local cmd_name = utils.format_command_name(name)
 
       -- Create Vim command
       vim.api.nvim_create_user_command(cmd_name, function()
@@ -39,19 +37,6 @@ function M.process_config()
       end, {
         desc = command.desc,
       })
-      -- vim.api.nvim_create_user_command(cmd_name, function()
-      --   -- Check if it's a UI command by looking at the command structure
-      --   local cmd_config = type(command.cmd) == 'function' and command.cmd() or command.cmd
-      --   if type(cmd_config) == 'table' and cmd_config.ui_callback then
-      --     -- Execute UI command
-      --     cmd_config.ui_callback()
-      --   else
-      --     -- Execute terminal command
-      --     terminal.run_command(name)
-      --   end
-      -- end, {
-      --   desc = command.desc,
-      -- })
     end
   end
 end

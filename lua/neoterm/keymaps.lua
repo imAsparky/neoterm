@@ -1,19 +1,19 @@
 -- lua/neoterm/keymaps.lua
 local M = {}
 local config = require 'neoterm.config'
+local utils = require 'neoterm.utils'
 
 -- Function to register individual command
 function M.register_command(name, command)
   -- Use the specified keys or fall back to first letter of command name
   local key_sequence = command.keys or name:sub(1, 1)
   M.maps.commands[key_sequence] = {
-    cmd = ':Neoterm' .. name:upper() .. '<CR>',
+    cmd = ':' .. utils.format_command_name(name) .. '<CR>',
     desc = command.desc,
   }
 end
 
 function M.setup()
-  -- vim.notify(string.format('OPTIONS in keymaps\n%s', config.options.key_prefix), vim.log.levels.ERROR)
   local ok, wk = pcall(require, 'which-key')
   if not ok then
     return
@@ -56,7 +56,7 @@ function M.setup_command_mappings()
     -- Use the specified keys or fall back to first letter of command name
     local key_sequence = cmd_info.keys or name:sub(1, 1)
     wk.add {
-      { M.base.prefix .. key_sequence, ':Neoterm' .. name:upper() .. '<CR>', desc = cmd_info.desc, mode = 'n' },
+      { M.base.prefix .. key_sequence, ':' .. utils.format_command_name(name) .. '<CR>', desc = cmd_info.desc, mode = 'n' },
     }
   end
 end
