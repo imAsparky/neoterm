@@ -3,7 +3,7 @@
 A Neovim plugin, with a persistent floating terminal window with (Python in Linux) 
 virtual environment activation.
 
-**Version = 0000.00.00.0**
+**Version = 2024.12.31.1**
 
 ## Caution - A Friendly Warning 🏗️
 
