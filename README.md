@@ -8,6 +8,7 @@ virtual environment activation.
 ## Caution - A Friendly Warning 🏗️
 
 It started out as a [TJ DeVries floating toggle-able terminal](https://youtu.be/5PIiKDES_wc?si=y-k1ujkzFtNobuRp)
+
 And here we are 🎉
 
 Neoterm is still taking its first steps into the world! While it's especially 
@@ -35,7 +36,7 @@ of tmux for bigger projects, we're perfect for those smaller coding adventures! 
 {
   "imAsparky/neoterm",
   opts = {
-    venv_name = "venv", -- default virtual environment name
+    key_prefix = "n", -- default menu key prefix
   },
 }
 ```
@@ -47,7 +48,7 @@ use {
   requires = {'folke/which-key.nvim'},
   config = function()
     require('neoterm').setup({
-      venv_name = "venv", -- default virtual environment name
+      key_prefix = "n", -- default menu key prefix
     })
   end
 }
@@ -63,7 +64,7 @@ Plug 'imAsparky/neoterm'
 
 " After installing, in your init.vim/init.lua:
 lua require('neoterm').setup({
-  venv_name = "venv", -- default virtual environment name
+  key_prefix = "n", -- default menu key prefix
 })
 ```
 
@@ -80,7 +81,7 @@ to get a comprehensive checkup! Our health wizard will check:
 
 ### About Those Keymaps ⌨️
 
-By default, we use `<leader>n` as our magical prefix for all commands. 
+By default, we use `<leader>n` as our prefix for all commands. 
 But what if you're already using that combination? No worries! 
 The health check will let you know if there are any conflicts, and you 
 can easily pick a different letter:
@@ -89,7 +90,6 @@ can easily pick a different letter:
 {
   "imAsparky/neoterm",
   opts = {
-    venv_name = "venv", -- default virtual environment name
     key_prefix = 't'  -- Change 'n' to any other unused letter
   },
 }
@@ -101,27 +101,87 @@ can easily pick a different letter:
 - Virtual environment activation
 - Persistent configuration
 - Integration with which-key for enhanced key bindings
+- This version is for Django development, more to come.
 
 ## Usage
 
 ### Commands
 
-- `:Neoterm` - Toggle floating terminal
-- `:NeotermSetVenv <name>` - Set virtual environment name
+- `:Neoterm` - Toggle
+    Alternative command to toggle the terminal window.
+
+### Virtual Environment Commands:
+
+- `:NeotermVenvActivate`
+    Activate the current virtual environment. The environment directory is
+    determined by the configured path setting, and if not set will walk up the 
+    directory until it finds one of the typical venv directory names and use that.
+
+- `:NeotermVenvSelect` **Not yet implemented!**
+    Select and activate a virtual environment. Opens a picker to choose from
+    available virtual environments in the current project.
+
+- `:NeotermVenvShow`
+    Show the current virtual environment path. Displays the full path to the
+    active virtual environment, if one is activated.
+
+- `:NeotermSetVenv` {path}
+    Set the virtual environment directory {path}. This changes the
+    default path used for setting virtual environments.
+
+### Bash Configuration Commands: **Requires you to have bash aliases set!**
+
+- `:NeotermEBAL`
+    Edit bash aliases file. Opens the user's bash aliases configuration file
+    in a new buffer.
+
+- `:NeotermEBRC`
+    Edit bashrc file. Opens the user's .bashrc configuration file in a new
+    buffer.
+
+### Django Management Commands: **Requires you to be working in a Django project!**
+
+- `:NeotermRunServer`
+    Run Django development server using ./manage.py runserver.
+
+- `:NeotermTailwind` **Requires django-tailwind!**
+    Start Django Tailwind CSS framework using ./manage.py tailwind start.
+
+- `:NeotermShellPlus` **Requires django-extensions!**
+    Launch Django Shell Plus with ./manage.py shell_plus. Provides an enhanced
+    interactive Python shell with all Django models auto-imported.
+
+- `:NeotermDiffSettings`
+    Show differences between current Django settings and default settings using
+    ./manage.py diffsettings.
+
+- `:NeotermCollectStatic`
+    Collect all static files into a single location for deployment using
+    ./manage.py collectstatic.
+
+Note: All Django management commands require a Django project with manage.py in
+the current working directory.
 
 ### Default Keymaps
 
-- `<leader>nt` - Toggle terminal
-- `<leader>nvw` - Activate workspace venv
-- `<leader>nvp` - Activate parent directory venv
-- `<leader>nvc` - Configure venv name
+- `<leader>nt`    Toggle terminal window
+- `<leader>nva`   Activate workspace virtual environment
+- `<leader>nvs`   Set virtual environment path
+- `<leader>nvw`   Display current working virtual environment path 
+- `<leader>naa`   Edit bash aliases
+- `<leader>nar`   Edit bashrc file
+- `<leader>ndc`   django collectstatic
+- `<leader>ndd`   django diffsettings
+- `<leader>ndr`   django runserver
+- `<leader>nds`   django extensions shellplus
+- `<leader>ndt`   django tailwind start
+
 
 ## Configuration
 
 ```lua
 require("neoterm").setup({
-  venv_name = "venv", -- default virtual environment name
-  key_prefix = 't'  -- Change 'n' to any other unused letter
+  key_prefix = 't'  -- Change 'n' to any other unused letter to prevent conflicts
 })
 ```
 

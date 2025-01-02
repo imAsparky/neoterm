@@ -1,0 +1,398 @@
+*neoterm.txt*    For Neovim >= 0.8.0    Last change: 2024 March 28
+
+                                                                *neoterm*
+                            NEOTERM
+                A floating terminal with venv support
+
+==============================================================================
+CONTENTS                                                      *neoterm-contents*
+
+    1. Introduction .......... |neoterm-introduction|
+    2. Requirements .......... |neoterm-requirements|
+    3. Installation .......... |neoterm-installation|
+    4. Configuration ......... |neoterm-configuration|
+    5. Commands .............. |neoterm-commands|
+    6. Mappings .............. |neoterm-mappings|
+    7. API ................... |neoterm-api|
+
+==============================================================================
+1. INTRODUCTION                                          *neoterm-introduction*
+
+Neoterm is a Neovim plugin that provides a floating terminal with enhanced
+virtual environment support. It allows you to easily manage terminal instances
+and Python virtual environments from within Neovim.
+
+==============================================================================
+2. REQUIREMENTS                                          *neoterm-requirements*
+
+- Neovim >= 0.8.0
+- which-key.nvim (https://github.com/folke/which-key.nvim)
+
+==============================================================================
+3. INSTALLATION                                          *neoterm-installation*
+
+Neoterm requires which-key.nvim to be installed and available. The installation
+method varies depending on your plugin manager.
+
+Using lazy.nvim (recommended):
+>
+    {
+      "imAsparky/neoterm",
+      dependencies = {
+        "folke/which-key.nvim",
+      },
+      opts = {
+        venv_name = "venv", -- default virtual environment name
+      },
+    }
+<
+
+Using packer.nvim:
+>
+    use {
+      'imAsparky/neoterm',
+      requires = {'folke/which-key.nvim'},
+      config = function()
+        require('neoterm').setup({
+          venv_name = "venv", -- default virtual environment name
+        })
+      end
+    }
+<
+
+Using vim-plug:
+First install which-key:
+>
+    Plug 'folke/which-key.nvim'
+<
+Then install neoterm:
+>
+    Plug 'imAsparky/neoterm'
+<
+After installing, in your init.vim/init.lua:
+>
+    lua require('neoterm').setup({
+      venv_name = "venv", -- default virtual environment name
+    })
+<
+
+Note: When not using lazy.nvim, ensure that which-key.nvim is loaded before
+neoterm. The plugin will display an error message if which-key.nvim is not
+found.
+
+==============================================================================
+4. CONFIGURATION                                        *neoterm-configuration*
+
+Neoterm can be configured during setup:
+>
+    require("neoterm").setup({
+        key_prefix = "n",     -- Default key prefix for all commands
+        venv = {
+            name = "venv",    -- Default virtual environment name
+        },
+        commands = {          -- Custom command configuration
+            -- String command example
+            my_command = {
+                cmd = "echo 'Hello'",
+                desc = "Print hello",
+                keys = "h",
+                group = "custom"
+            },
+            -- Shell command with initialization
+            activate_venv = {
+                cmd = function()
+                    return {
+                        init = vim.o.shell,
+                        post_cmd = "source venv/bin/activate"
+                    }
+                end,
+                desc = "Activate venv",
+                keys = "va",
+                group = "v"
+            },
+            -- Function command example
+            venv_select = {
+                cmd = function()
+                    return {
+                        cmd = function()
+                            require('neoterm.venv').select_venv()
+                        end,
+                        module = 'neoterm.venv',
+                        func = 'select_venv'
+                    }
+                end,
+                desc = "Select virtual environment",
+                keys = "vs",
+                group = "v"
+            }
+        },
+        groups = {           -- Command groups for organization
+            v = { name = "Virtual Environment" },
+            b = { name = "Bash Configuration" },
+            d = { name = "Django Commands" },
+            custom = { name = "Custom Commands" }
+        }
+    })
+<
+
+Configuration Options ~
+                                                       *neoterm-config-options*
+
+    key_prefix    string    Prefix for all keymaps (default: "n")
+    venv          table     Virtual environment configuration
+        name     string    Name of the virtual environment directory
+    commands      table     Custom command definitions
+    groups        table     Command group definitions
+
+Command Configuration ~
+                                                    *neoterm-command-config*
+
+Neoterm supports several command patterns for different use cases:
+
+1. Simple String Commands ~
+   Basic terminal commands that execute directly:
+>
+   my_command = {
+     cmd = "./script.sh",
+     desc = "Run script",
+     keys = "rs",
+     group = "custom"
+   }
+<
+
+2. Shell Commands with Initialization ~
+   Commands that need shell initialization and post-setup:
+>
+   venv_command = {
+     cmd = function()
+       return {
+         init = vim.o.shell,
+         post_cmd = "source venv/bin/activate"
+       }
+     end,
+     desc = "Activate environment",
+     keys = "va",
+     group = "v"
+   }
+<
+
+3. Function Commands ~
+   Commands that execute Lua functions:
+>
+   select_venv = {
+     cmd = function()
+       return {
+         cmd = function()
+           require('neoterm.venv').select_venv()
+         end,
+         module = 'neoterm.venv',
+         func = 'select_venv'
+       }
+     end,
+     desc = "Select virtual environment",
+     keys = "vs",
+     group = "v"
+   }
+<
+
+Command Structure Fields ~
+                                                    *neoterm-command-fields*
+
+Each command configuration must include:
+
+    cmd          string|function    The command to execute
+    desc         string            Command description
+    keys         string            Keymap suffix (after key_prefix)
+    group        string            Command group identifier
+
+For function commands, the returned table must include:
+
+    cmd          function          The function to execute
+    module       string            Module path for serialization
+    func         string            Function name for serialization
+
+Command Groups ~
+                                                    *neoterm-command-groups*
+
+Groups help organize commands in the which-key menu:
+>
+    groups = {
+        v = { name = "Virtual Environment" },
+        b = { name = "Bash Configuration" },
+        d = { name = "Django Commands" },
+        custom = { name = "Custom Commands" }
+    }
+<
+
+Built-in Groups:
+    v        Virtual environment commands
+    b        Bash configuration commands
+    d        Django management commands
+
+Development Mode ~
+                                                    *neoterm-development-mode*
+
+Neoterm includes a development mode that can be enabled by setting the
+DEVELOPING environment variable. This mode provides automatic plugin reloading
+for easier development.
+
+To enable development mode:
+>
+    # Either export the variable first
+    export DEVELOPING=1
+    nvim
+
+    # Or enable it directly when launching nvim
+    DEVELOPING=1 nvim
+<
+
+When development mode is enabled, Neoterm will:
+    - Monitor all plugin Lua files for changes
+    - Automatically unload all plugin modules on file save
+    - Reload the plugin setup
+
+This allows you to modify the plugin code and see changes immediately without
+needing to manually reload Neovim.
+
+Help Tags ~
+                                                    *neoterm-help-tags*
+
+When modifying the documentation, you need to regenerate the help tags for
+changes to take effect in Neovim's help system. From within Neovim:
+>
+    :helptags doc/
+
+
+This command generates a 'tags' file in your plugin's doc directory that maps
+each *tag* in your documentation to its location in the help files. The tags
+file enables Neovim's help system to quickly locate and display documentation
+when users use commands like :help neoterm-development-mode.
+
+You should regenerate help tags whenever you:
+    - Add new tags to your documentation
+    - Change existing tags
+    - Add new help files
+
+Note: Plugin managers typically run :helptags during installation, but as a
+developer, you'll want to run it after making documentation changes to test
+that your help system works correctly.
+
+
+==============================================================================
+5. COMMANDS                                                *neoterm-commands*
+
+Core Commands:                                              *neoterm-core*
+
+                                                                *:Neoterm*
+:Neoterm
+    Toggle the floating terminal window.
+
+                                                           *:NeotermToggle*
+:NeotermToggle
+    Alternative command to toggle the terminal window.
+
+Virtual Environment Commands:                               *neoterm-venv*
+
+                                                           *:NeotermVenvActivate*
+:NeotermVenvActivate
+    Activate the current virtual environment. The environment directory is
+    determined by the configured venv_name setting.
+
+                                                           *:NeotermVenvSelect*
+:NeotermVenvSelect
+    Select and activate a virtual environment. Opens a picker to choose from
+    available virtual environments in the current project.
+
+                                                           *:NeotermVenvShow*
+:NeotermVenvShow
+    Show the current virtual environment path. Displays the full path to the
+    active virtual environment, if one is activated.
+
+                                                           *:NeotermSetVenv*
+:NeotermSetVenv {path}
+    Set the virtual environment directory  {path}. This changes the
+    default path used when activating a virtual environments.
+
+Bash Configuration Commands:                                *neoterm-bash*
+
+                                                               *:NeotermEBAL*
+:NeotermEBAL
+    Edit bash aliases file. Opens the user's bash aliases configuration file
+    in a new buffer.
+
+                                                               *:NeotermEBRC*
+:NeotermEBRC
+    Edit bashrc file. Opens the user's .bashrc configuration file in a new
+    buffer.
+
+Django Management Commands:                                 *neoterm-django*
+
+                                                           *:NeotermRunServer*
+:NeotermRunServer
+    Run Django development server using ./manage.py runserver.
+
+                                                           *:NeotermTailwind*
+:NeotermTailwind
+    Start Django Tailwind CSS framework using ./manage.py tailwind start.
+
+                                                           *:NeotermShellPlus*
+:NeotermShellPlus
+    Launch Django Shell Plus with ./manage.py shell_plus. Provides an enhanced
+    interactive Python shell with all Django models auto-imported.
+
+                                                           *:NeotermDiffSettings*
+:NeotermDiffSettings
+    Show differences between current Django settings and default settings using
+    ./manage.py diffsettings.
+
+                                                           *:NeotermCollectStatic*
+:NeotermCollectStatic
+    Collect all static files into a single location for deployment using
+    ./manage.py collectstatic.
+
+Note: All Django management commands require a Django project with manage.py in
+the current working directory.
+
+==============================================================================
+6. MAPPINGS                                                *neoterm-mappings*
+
+Default key mappings (all mappings start with <leader>n):
+
+    nt    Toggle terminal window
+    va    Activate workspace virtual environment
+    vs    Set virtual environment path
+    vw    Display current working virtual environment path 
+    aa    Edit bash aliases
+    ar    Edit bashrc file
+    dc    django collectstatic
+    dd    django diffsettings
+    dr    django runserver
+    ds    django extensions shellplus
+    dt    django tailwind start
+
+To disable default mappings, see |neoterm-configuration|.
+
+==============================================================================
+7. API                                                        *neoterm-api*
+
+Neoterm provides the following Lua functions:
+
+                                                     *neoterm.setup()*
+setup({opts})
+    Initialize neoterm with the given options.
+    Parameters: ~
+        {opts} Table of configuration options (see |neoterm-config-options|)
+
+                                                     *neoterm.toggle()*
+toggle()
+    Toggle the floating terminal window.
+
+                                                     *neoterm.set_venv()*
+set_venv({name})
+    Set the virtual environment path.
+    Parameters: ~
+        {path} String path to the virtual environment directory
+
+==============================================================================
+ vim:tw=78:ts=8:ft=help:norl:
+
