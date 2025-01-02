@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## [2025.01.02.1]
+
+### Maintenance
+- Initial terminal working (neoterm) [#3](https://github.com/imAsparky/neoterm/pull/3)
+  > First pass, using default commands to set some commands until
+the ui for user commands is finished. Suits Django devs!
+
+
 ## [2024.12.31.1]
 
 ### Maintenance
