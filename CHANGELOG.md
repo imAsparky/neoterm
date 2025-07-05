@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## [2025.07.05.1]
+
+### Features
+- Add sync theme to nvim instance (theme) [#6](https://github.com/imAsparky/neoterm/pull/6)
+
+
 ## [2025.01.02.1]
 
 ### Maintenance
