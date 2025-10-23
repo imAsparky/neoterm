@@ -16,40 +16,35 @@ local function send_to_terminal(bufnr, cmd)
   vim.api.nvim_chan_send(chan, cmd .. '\n')
 end
 
--- Set up terminal buffer options with proper theming
+-- Set up terminal buffer options
 local function setup_terminal(bufnr)
   -- Set buffer options
   vim.bo[bufnr].buflisted = false
   vim.bo[bufnr].modifiable = true
   vim.bo[bufnr].bufhidden = 'hide' -- Ensure the terminal is available until killed
 
-  -- Apply current colorscheme to terminal
-  local function apply_terminal_colors()
-    -- Get current colorscheme colors
-    local normal_bg = vim.fn.synIDattr(vim.fn.hlID 'Normal', 'bg')
-    local normal_fg = vim.fn.synIDattr(vim.fn.hlID 'Normal', 'fg')
+  -- Map <Esc><Esc> in terminal mode to exit and hide
+  vim.keymap.set('t', '<Esc><Esc>', function()
+    vim.cmd 'stopinsert'
+    vim.defer_fn(function()
+      if vim.api.nvim_win_is_valid(state.floating.win) then
+        vim.api.nvim_win_hide(state.floating.win)
+      end
+    end, 10)
+  end, { buffer = bufnr, desc = 'Exit terminal and hide window' })
 
-    -- Set terminal colors to match current theme
-    if normal_bg ~= '' then
-      vim.api.nvim_set_hl(0, 'TerminalNormal', { bg = normal_bg, fg = normal_fg })
-      vim.api.nvim_buf_set_option(bufnr, 'winhl', 'Normal:TerminalNormal')
+  -- Map <Esc><Esc> in normal mode to hide terminal window
+  vim.keymap.set('n', '<Esc><Esc>', function()
+    if vim.api.nvim_win_is_valid(state.floating.win) then
+      vim.api.nvim_win_hide(state.floating.win)
     end
-  end
-
-  -- Apply colors immediately
-  apply_terminal_colors()
-
-  -- Reapply colors when colorscheme changes
-  local term_group = vim.api.nvim_create_augroup('TerminalThemeSync' .. bufnr, { clear = true })
-  vim.api.nvim_create_autocmd('ColorScheme', {
-    group = term_group,
-    callback = apply_terminal_colors,
-  })
+  end, { buffer = bufnr, desc = 'Hide neoterm terminal' })
 
   -- Start terminal in insert mode
   vim.cmd 'startinsert'
 
   -- Auto-enter insert mode when focusing terminal
+  local term_group = vim.api.nvim_create_augroup('TerminalBehavior', { clear = true })
   vim.api.nvim_create_autocmd('BufEnter', {
     group = term_group,
     buffer = bufnr,
@@ -61,7 +56,7 @@ local function setup_terminal(bufnr)
   })
 end
 
--- Create floating terminal window with proper theme inheritance
+-- Create floating terminal window
 local function create_float_term(opts)
   opts = opts or {}
 
@@ -85,20 +80,7 @@ local function create_float_term(opts)
     buf = vim.api.nvim_create_buf(false, true)
   end
 
-  -- Get colors from current theme for border
-  local border_fg = vim.fn.synIDattr(vim.fn.hlID 'FloatBorder', 'fg')
-  local border_bg = vim.fn.synIDattr(vim.fn.hlID 'FloatBorder', 'bg')
-  local normal_bg = vim.fn.synIDattr(vim.fn.hlID 'Normal', 'bg')
-
-  -- Fallback to reasonable defaults if theme doesn't define these
-  if border_fg == '' then
-    border_fg = vim.fn.synIDattr(vim.fn.hlID 'Comment', 'fg')
-  end
-  if border_bg == '' then
-    border_bg = normal_bg
-  end
-
-  -- Window configuration with theme-aware styling
+  -- Window configuration
   local win_config = {
     relative = 'editor',
     width = win_width,
@@ -107,27 +89,10 @@ local function create_float_term(opts)
     col = col,
     style = 'minimal',
     border = 'rounded',
-    -- Apply current theme colors to the floating window
-    title = ' Neoterm ',
-    title_pos = 'center',
   }
-
-  -- Create custom highlight group for the floating window
-  vim.api.nvim_set_hl(0, 'NeotermFloat', {
-    bg = normal_bg ~= '' and normal_bg or nil,
-    fg = border_fg ~= '' and border_fg or nil,
-  })
-
-  vim.api.nvim_set_hl(0, 'NeotermFloatBorder', {
-    bg = border_bg ~= '' and border_bg or nil,
-    fg = border_fg ~= '' and border_fg or nil,
-  })
 
   -- Create window
   local win = vim.api.nvim_open_win(buf, true, win_config)
-
-  -- Apply window-specific highlighting
-  vim.api.nvim_win_set_option(win, 'winhl', 'Normal:NeotermFloat,FloatBorder:NeotermFloatBorder')
 
   -- Set up terminal behavior if this is a new buffer
   if not vim.api.nvim_buf_is_valid(opts.buf) then
@@ -166,13 +131,9 @@ function M.run_command(command_name)
       if not vim.api.nvim_win_is_valid(state.floating.win) then
         state.floating = create_float_term { buf = state.floating.buf }
 
-        vim.notify(string.format('Post Command %s', command.post_cmd), vim.log.levels.INFO)
-
-        -- Create terminal with proper environment and color support
         vim.fn.termopen(command.init, {
           env = {
             TERM = 'xterm-256color',
-            COLORTERM = 'truecolor', -- Enable true color support
           },
         })
 
@@ -194,13 +155,9 @@ function M.run_command(command_name)
     if not vim.api.nvim_win_is_valid(state.floating.win) then
       state.floating = create_float_term { buf = state.floating.buf }
 
-      vim.notify(string.format('Terminal Command %s', command), vim.log.levels.INFO)
-
-      -- Create terminal with proper environment and color support
       vim.fn.termopen(command, {
         env = {
           TERM = 'xterm-256color',
-          COLORTERM = 'truecolor', -- Enable true color support
         },
       })
 
@@ -219,13 +176,7 @@ function M.toggle()
   if not vim.api.nvim_win_is_valid(state.floating.win) then
     state.floating = create_float_term { buf = state.floating.buf }
     if vim.bo[state.floating.buf].buftype ~= 'terminal' then
-      -- Create terminal with proper environment and color support
-      vim.fn.termopen(vim.o.shell, {
-        env = {
-          TERM = 'xterm-256color',
-          COLORTERM = 'truecolor', -- Enable true color support
-        },
-      })
+      vim.fn.termopen(vim.o.shell)
       vim.cmd 'startinsert'
     end
   else

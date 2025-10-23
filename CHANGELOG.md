@@ -2,6 +2,15 @@
 
 <!--next-version-placeholder-->
 
+## [2025.10.23.1]
+
+### ⚠ BREAKING CHANGES
+- BREAKING: Update startup to warn only on running (warn) [#9](https://github.com/imAsparky/neoterm/pull/9)
+
+### Bug Fixes
+- BREAKING: Update startup to warn only on running (warn) [#9](https://github.com/imAsparky/neoterm/pull/9)
+
+
 ## [2025.07.05.1]
 
 ### Features
