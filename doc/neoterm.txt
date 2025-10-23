@@ -1,8 +1,8 @@
-*neoterm.txt*    For Neovim >= 0.8.0    Last change: 2024 March 28
+*neoterm.txt*    For Neovim >= 0.10.0    Last change: 2025 January 07
 
                                                                 *neoterm*
                             NEOTERM
-                A floating terminal with venv support
+                A floating terminal with venv and mise support
 
 ==============================================================================
 CONTENTS                                                      *neoterm-contents*
@@ -14,19 +14,32 @@ CONTENTS                                                      *neoterm-contents*
     5. Commands .............. |neoterm-commands|
     6. Mappings .............. |neoterm-mappings|
     7. API ................... |neoterm-api|
+    8. mise Support .......... |neoterm-mise|
+    9. Troubleshooting ....... |neoterm-troubleshooting|
 
 ==============================================================================
 1. INTRODUCTION                                          *neoterm-introduction*
 
 Neoterm is a Neovim plugin that provides a floating terminal with enhanced
-virtual environment support. It allows you to easily manage terminal instances
-and Python virtual environments from within Neovim.
+virtual environment support. It supports both traditional Python virtual
+environments (venv) and mise (formerly rtx) for modern Python version
+management.
+
+Key Features:
+  - Smart project root detection
+  - mise and venv support
+  - Git worktree compatible
+  - Automatic environment activation
+  - Django management commands
 
 ==============================================================================
 2. REQUIREMENTS                                          *neoterm-requirements*
 
-- Neovim >= 0.8.0
+- Neovim >= 0.10.0
 - which-key.nvim (https://github.com/folke/which-key.nvim)
+
+Optional:
+- mise (https://mise.jdx.dev) for mise support
 
 ==============================================================================
 3. INSTALLATION                                          *neoterm-installation*
@@ -42,7 +55,9 @@ Using lazy.nvim (recommended):
         "folke/which-key.nvim",
       },
       opts = {
-        venv_name = "venv", -- default virtual environment name
+        venv = {
+          strategy = "auto",  -- "auto" | "venv-only" | "mise-only"
+        },
       },
     }
 <
@@ -54,7 +69,9 @@ Using packer.nvim:
       requires = {'folke/which-key.nvim'},
       config = function()
         require('neoterm').setup({
-          venv_name = "venv", -- default virtual environment name
+          venv = {
+            strategy = "auto",
+          }
         })
       end
     }
@@ -72,7 +89,9 @@ Then install neoterm:
 After installing, in your init.vim/init.lua:
 >
     lua require('neoterm').setup({
-      venv_name = "venv", -- default virtual environment name
+      venv = {
+        strategy = "auto",
+      }
     })
 <
 
@@ -88,48 +107,28 @@ Neoterm can be configured during setup:
     require("neoterm").setup({
         key_prefix = "n",     -- Default key prefix for all commands
         venv = {
-            name = "venv",    -- Default virtual environment name
+            strategy = "auto",  -- Environment detection strategy
+            project_root_markers = {
+                "manage.py",
+                ".git",
+                "pyproject.toml",
+                "setup.py",
+            },
+            venv_names = { "venv", ".venv", "env", ".env", "virtualenv" },
+            mise_check = "warn_once",
+            suppress_warnings = true,
+            auto_cd_to_root = true,
         },
         commands = {          -- Custom command configuration
-            -- String command example
             my_command = {
                 cmd = "echo 'Hello'",
                 desc = "Print hello",
                 keys = "h",
                 group = "custom"
             },
-            -- Shell command with initialization
-            activate_venv = {
-                cmd = function()
-                    return {
-                        init = vim.o.shell,
-                        post_cmd = "source venv/bin/activate"
-                    }
-                end,
-                desc = "Activate venv",
-                keys = "va",
-                group = "v"
-            },
-            -- Function command example
-            venv_select = {
-                cmd = function()
-                    return {
-                        cmd = function()
-                            require('neoterm.venv').select_venv()
-                        end,
-                        module = 'neoterm.venv',
-                        func = 'select_venv'
-                    }
-                end,
-                desc = "Select virtual environment",
-                keys = "vs",
-                group = "v"
-            }
         },
         groups = {           -- Command groups for organization
             v = { name = "Virtual Environment" },
-            b = { name = "Bash Configuration" },
-            d = { name = "Django Commands" },
             custom = { name = "Custom Commands" }
         }
     })
@@ -140,9 +139,99 @@ Configuration Options ~
 
     key_prefix    string    Prefix for all keymaps (default: "n")
     venv          table     Virtual environment configuration
-        name     string    Name of the virtual environment directory
     commands      table     Custom command definitions
     groups        table     Command group definitions
+
+Virtual Environment Configuration ~
+                                                       *neoterm-venv-config*
+
+    strategy                 string    Environment detection strategy
+                                      "auto" - Try both mise and venv
+                                      "venv-only" - Only traditional venv
+                                      "mise-only" - Only mise
+                                      (default: "auto")
+    
+    project_root_markers    table     Files/dirs that indicate project root
+                                      Searched in order
+                                      (default: { "manage.py", ".git",
+                                                 "pyproject.toml", "setup.py" })
+    
+    venv_names              table     Virtual environment directory names
+                                      (default: { "venv", ".venv", "env",
+                                                 ".env", "virtualenv" })
+    
+    mise_check              string    mise validation behavior
+                                      "warn_once" - Warn once per session
+                                      "warn_always" - Warn every execution
+                                      "fail" - Error if mise not found
+                                      "silent" - Never warn
+                                      (default: "warn_once")
+    
+    suppress_warnings       boolean   Suppress warnings during setup
+                                      (default: true)
+    
+    auto_cd_to_root        boolean   Always cd to project root before
+                                      running commands (default: true)
+
+Strategy Options Explained ~
+                                                       *neoterm-strategy*
+
+"auto" (default):
+    - Checks for both mise and venv
+    - Project root checked first, then parent directories
+    - If both exist in same directory, shows error and requires explicit choice
+    - Best for flexibility across different projects
+
+"venv-only":
+    - Only looks for traditional virtual environments
+    - Ignores mise.toml files
+    - Fastest for venv-exclusive workflows
+    - No mise-related checks or warnings
+
+"mise-only":
+    - Only looks for mise configuration files
+    - Ignores venv directories
+    - Best when fully migrated to mise
+    - No venv-related checks
+
+Environment Detection Process ~
+                                                       *neoterm-detection*
+
+Neoterm uses a two-phase detection process:
+
+Phase 1 - Find Project Root:
+    Starting from current directory, walks up looking for any file/directory
+    in project_root_markers list. First match wins.
+
+Phase 2 - Find Environment:
+    Starting from project root:
+    1. Check project root itself for mise.toml or venv/
+    2. Walk up parent directories looking for mise.toml or venv/
+    
+    Strategy affects what is checked:
+    - "auto": Checks both (conflict detection enabled)
+    - "venv-only": Only checks venv directories
+    - "mise-only": Only checks mise files
+
+Conflict Resolution ~
+                                                       *neoterm-conflicts*
+
+If both mise.toml and a venv directory exist in the same location when
+strategy="auto", neoterm will:
+    1. Show an error message
+    2. Refuse to proceed
+    3. Require you to set an explicit strategy
+
+Example error:
+>
+    ERROR: Both mise.toml and venv/ detected in /path/to/project
+    
+    This is ambiguous. Please set an explicit strategy:
+      venv = { strategy = "mise-only" }  -- Use mise
+      venv = { strategy = "venv-only" }  -- Use venv
+    
+    Or remove the unused environment manager.
+<
 
 Command Configuration ~
                                                     *neoterm-command-config*
@@ -261,7 +350,7 @@ When modifying the documentation, you need to regenerate the help tags for
 changes to take effect in Neovim's help system. From within Neovim:
 >
     :helptags doc/
-
+<
 
 This command generates a 'tags' file in your plugin's doc directory that maps
 each *tag* in your documentation to its location in the help files. The tags
@@ -276,7 +365,6 @@ You should regenerate help tags whenever you:
 Note: Plugin managers typically run :helptags during installation, but as a
 developer, you'll want to run it after making documentation changes to test
 that your help system works correctly.
-
 
 ==============================================================================
 5. COMMANDS                                                *neoterm-commands*
@@ -295,23 +383,26 @@ Virtual Environment Commands:                               *neoterm-venv*
 
                                                            *:NeotermVenvActivate*
 :NeotermVenvActivate
-    Activate the current virtual environment. The environment directory is
-    determined by the configured venv_name setting.
+    Activate the current virtual environment. For traditional venv, sources
+    the activate script. For mise, displays environment info (mise handles
+    activation automatically via shell integration).
 
                                                            *:NeotermVenvSelect*
 :NeotermVenvSelect
-    Select and activate a virtual environment. Opens a picker to choose from
-    available virtual environments in the current project.
+    Select and manually set a virtual environment path. Opens a prompt with
+    directory completion.
 
                                                            *:NeotermVenvShow*
 :NeotermVenvShow
-    Show the current virtual environment path. Displays the full path to the
-    active virtual environment, if one is activated.
+    Show the current virtual environment information including:
+    - Environment type (mise or venv)
+    - Project root path
+    - Environment root path
 
                                                            *:NeotermSetVenv*
 :NeotermSetVenv {path}
-    Set the virtual environment directory  {path}. This changes the
-    default path used when activating a virtual environments.
+    Manually set the virtual environment directory path. This overrides
+    automatic detection for the current session.
 
 Bash Configuration Commands:                                *neoterm-bash*
 
@@ -329,7 +420,8 @@ Django Management Commands:                                 *neoterm-django*
 
                                                            *:NeotermRunServer*
 :NeotermRunServer
-    Run Django development server using ./manage.py runserver.
+    Run Django development server using ./manage.py runserver. Automatically
+    activates the detected environment and runs from project root.
 
                                                            *:NeotermTailwind*
 :NeotermTailwind
@@ -350,8 +442,9 @@ Django Management Commands:                                 *neoterm-django*
     Collect all static files into a single location for deployment using
     ./manage.py collectstatic.
 
-Note: All Django management commands require a Django project with manage.py in
-the current working directory.
+Note: All Django management commands require a Django project with manage.py.
+They automatically detect and use the appropriate environment (mise or venv)
+and run from the correct project root directory.
 
 ==============================================================================
 6. MAPPINGS                                                *neoterm-mappings*
@@ -360,17 +453,17 @@ Default key mappings (all mappings start with <leader>n):
 
     nt    Toggle terminal window
     va    Activate workspace virtual environment
-    vs    Set virtual environment path
-    vw    Display current working virtual environment path 
-    aa    Edit bash aliases
-    ar    Edit bashrc file
+    vs    Select virtual environment path manually
+    vw    Display current virtual environment information
+    ba    Edit bash aliases
+    br    Edit bashrc file
     dc    django collectstatic
     dd    django diffsettings
     dr    django runserver
     ds    django extensions shellplus
     dt    django tailwind start
 
-To disable default mappings, see |neoterm-configuration|.
+To disable default mappings or customize them, see |neoterm-configuration|.
 
 ==============================================================================
 7. API                                                        *neoterm-api*
@@ -382,17 +475,271 @@ setup({opts})
     Initialize neoterm with the given options.
     Parameters: ~
         {opts} Table of configuration options (see |neoterm-config-options|)
+    
+    Example: ~
+>
+        require('neoterm').setup({
+          venv = {
+            strategy = "mise-only",
+          }
+        })
+<
 
                                                      *neoterm.toggle()*
 toggle()
     Toggle the floating terminal window.
+    
+    Example: ~
+>
+        require('neoterm.terminal').toggle()
+<
 
-                                                     *neoterm.set_venv()*
-set_venv({name})
-    Set the virtual environment path.
+                                                     *neoterm.venv.get_venv_path()*
+venv.get_venv_path()
+    Get information about the current Python environment.
+    
+    Returns: ~
+        env_root       string|nil   Path to mise.toml dir or venv dir
+        project_root   string|nil   Path to project root
+        env_type       string       'mise' | 'venv' | 'none' | 'conflict'
+    
+    Example: ~
+>
+        local env_root, project_root, env_type = 
+          require('neoterm.venv').get_venv_path()
+        
+        if env_type == 'mise' then
+          print('Using mise at: ' .. env_root)
+        elseif env_type == 'venv' then
+          print('Using venv at: ' .. env_root)
+        end
+<
+
+                                                     *neoterm.venv.ensure_valid_environment()*
+venv.ensure_valid_environment()
+    Get environment information with automatic error handling.
+    Returns nil if no valid environment found (error already shown to user).
+    
+    Returns: ~
+        env_root       string|nil   Path to environment
+        project_root   string|nil   Path to project root
+        env_type       string|nil   'mise' | 'venv' (or nil on error)
+    
+    Example: ~
+>
+        local env_root, project_root, env_type = 
+          require('neoterm.venv').ensure_valid_environment()
+        
+        if not env_type then
+          return  -- Error already notified to user
+        end
+        
+        -- Safe to use env_root, project_root, env_type
+<
+
+                                                     *neoterm.venv.set_venv_path()*
+venv.set_venv_path({path})
+    Manually set the virtual environment path for the current session.
+    Overrides automatic detection.
+    
     Parameters: ~
-        {path} String path to the virtual environment directory
+        {path} string   Path to the virtual environment directory
+    
+    Returns: ~
+        boolean   true if successful, false if invalid path
+    
+    Example: ~
+>
+        require('neoterm.venv').set_venv_path('/path/to/my/venv')
+<
+
+                                                     *neoterm.venv.select_venv()*
+venv.select_venv()
+    Open an interactive prompt to select a virtual environment path.
+    Uses Neovim's built-in vim.ui.input with directory completion.
+    
+    Example: ~
+>
+        require('neoterm.venv').select_venv()
+<
+
+                                                     *neoterm.venv.show_venv_info()*
+venv.show_venv_info()
+    Display information about the current environment in a notification.
+    Shows environment type, project root, and environment root.
+    
+    Example: ~
+>
+        require('neoterm.venv').show_venv_info()
+<
+
+==============================================================================
+8. MISE SUPPORT                                              *neoterm-mise*
+
+Neoterm has first-class support for mise (https://mise.jdx.dev), a modern
+tool for managing development environments.
+
+What is mise? ~
+
+mise (formerly rtx) is a development environment manager that:
+  - Manages Python versions per-project
+  - Automatically activates environments when you cd into directories
+  - Works via shell integration (no manual activation needed)
+  - Supports .tool-versions (compatible with asdf)
+
+How neoterm Works with mise ~
+
+When mise is detected (via mise.toml, .mise.toml, or .tool-versions):
+  1. Commands run from the project root directory
+  2. Python environment is already active via mise shell integration
+  3. No need to manually activate or source anything
+
+Project Structure Example ~
+>
+    my-repo/
+    ├── mise.toml          # Defines Python 3.11
+    ├── feat-1/            # Git worktree 1
+    │   └── manage.py
+    └── feat-2/            # Git worktree 2
+        └── manage.py
+<
+
+When working in feat-1/:
+  - Project root: feat-1/ (has manage.py)
+  - Environment root: my-repo/ (has mise.toml)
+  - Commands run in feat-1/ with Python from my-repo/mise.toml
+
+Configuration for mise ~
+
+Recommended configuration:
+>
+    require('neoterm').setup({
+      venv = {
+        strategy = "mise-only",  -- Only use mise
+        mise_check = "warn_once", -- Warn if mise not in PATH
+      }
+    })
+<
+
+Or use "auto" strategy for flexibility:
+>
+    require('neoterm').setup({
+      venv = {
+        strategy = "auto",  -- Try both mise and venv
+      }
+    })
+<
+
+mise Requirements ~
+
+For neoterm to work with mise, you need:
+  1. mise installed: https://mise.jdx.dev/getting-started.html
+  2. Shell integration enabled (in .bashrc or .zshrc)
+  3. A mise.toml file in your project or parent directory
+
+Check mise status:
+>
+    :!mise doctor
+<
+
+Troubleshooting mise ~
+
+"mise.toml detected but mise not found in PATH":
+  - Install mise: https://mise.jdx.dev/getting-started.html
+  - Ensure shell integration is active
+  - Or set mise_check = "silent" if shell integration works
+
+"Both mise.toml and venv detected":
+  - You have both environment managers in the same directory
+  - Set explicit strategy: strategy = "mise-only" or "venv-only"
+  - Or remove the unused environment manager
+
+Check environment detection:
+>
+    :checkhealth neoterm
+<
+
+==============================================================================
+9. TROUBLESHOOTING                                  *neoterm-troubleshooting*
+
+Common Issues ~
+
+"No environment detected"
+    Cause: No mise.toml or venv found in project or parent directories
+    
+    Solutions:
+    - Check :checkhealth neoterm to see what's being searched
+    - Ensure you're in a Python project directory
+    - Verify project_root_markers match your project structure
+    - Create mise.toml or venv as appropriate
+
+"Both mise.toml and venv detected"
+    Cause: Both environment managers exist in the same directory
+    
+    Solutions:
+    - Remove the unused environment manager
+    - Set explicit strategy: venv = { strategy = "mise-only" }
+    - Or: venv = { strategy = "venv-only" }
+
+"mise not found in PATH"
+    Cause: mise.toml detected but mise command not available
+    
+    Solutions:
+    - Install mise: https://mise.jdx.dev/getting-started.html
+    - Verify mise shell integration is active
+    - Set mise_check = "silent" if you know it works
+
+"Commands run in wrong directory"
+    Cause: Project root not detected correctly
+    
+    Solutions:
+    - Ensure project_root_markers includes a file in your project
+    - For Django: Add "manage.py" first in the list
+    - Check :checkhealth neoterm to see detected paths
+
+Health Check ~
+
+Always start troubleshooting with:
+>
+    :checkhealth neoterm
+<
+
+This shows:
+  - Detected project root and environment root
+  - Environment type (mise/venv/none/conflict)
+  - Python version
+  - Django installation (if applicable)
+  - Configuration values
+  - Potential conflicts
+
+Debug Commands ~
+
+Check environment info:
+>
+    :NeotermVenvShow
+<
+
+Test mise:
+>
+    :!mise doctor
+    :!mise which python
+<
+
+Check Python version:
+>
+    :!python --version
+<
+
+Getting Help ~
+
+If issues persist:
+  1. Run :checkhealth neoterm and save the output
+  2. Check :messages for error details
+  3. Open an issue on GitHub with:
+     - Health check output
+     - Your configuration
+     - Project structure
+     - Error messages
 
 ==============================================================================
  vim:tw=78:ts=8:ft=help:norl:
-

@@ -30,13 +30,13 @@ function M.setup()
     commands = {}, -- Will store registered commands
   }
 
-  -- Register base group
+  -- Register base group and toggle command
   wk.add {
-    { M.base.prefix, name = M.base.name },
+    { M.base.prefix, group = M.base.name, mode = 'n' },
     { M.base.prefix .. 't', M.base.t.cmd, desc = M.base.t.desc, mode = 'n' },
   }
 
-  -- Register groups
+  -- Register command groups
   for group_key, group_info in pairs(config.options.groups) do
     wk.add {
       { M.base.prefix .. group_key, group = group_info.name, mode = 'n' },

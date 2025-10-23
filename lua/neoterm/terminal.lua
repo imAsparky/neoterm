@@ -23,6 +23,23 @@ local function setup_terminal(bufnr)
   vim.bo[bufnr].modifiable = true
   vim.bo[bufnr].bufhidden = 'hide' -- Ensure the terminal is available until killed
 
+  -- Map <Esc><Esc> in terminal mode to exit and hide
+  vim.keymap.set('t', '<Esc><Esc>', function()
+    vim.cmd 'stopinsert'
+    vim.defer_fn(function()
+      if vim.api.nvim_win_is_valid(state.floating.win) then
+        vim.api.nvim_win_hide(state.floating.win)
+      end
+    end, 10)
+  end, { buffer = bufnr, desc = 'Exit terminal and hide window' })
+
+  -- Map <Esc><Esc> in normal mode to hide terminal window
+  vim.keymap.set('n', '<Esc><Esc>', function()
+    if vim.api.nvim_win_is_valid(state.floating.win) then
+      vim.api.nvim_win_hide(state.floating.win)
+    end
+  end, { buffer = bufnr, desc = 'Hide neoterm terminal' })
+
   -- Start terminal in insert mode
   vim.cmd 'startinsert'
 
@@ -99,18 +116,6 @@ function M.run_command(command_name)
   -- Get initial command value
   local command = type(cmd.cmd) == 'function' and cmd.cmd() or cmd.cmd
 
-  -- Debug info
-  -- vim.notify(
-  --   string.format(
-  --     'Running command %s:\n  cmd exists: %s\n  cmd type: %s\n  command structure: %s',
-  --     command_name,
-  --     cmd and 'yes' or 'no',
-  --     type(command),
-  --     vim.inspect(command)
-  --   ),
-  --   vim.log.levels.INFO
-  -- )
-
   -- Handle function commands
   if type(command) == 'function' then
     command()
@@ -126,7 +131,6 @@ function M.run_command(command_name)
       if not vim.api.nvim_win_is_valid(state.floating.win) then
         state.floating = create_float_term { buf = state.floating.buf }
 
-        vim.notify(string.format('Post Command %s', command.post_cmd), vim.log.levels.INFO)
         vim.fn.termopen(command.init, {
           env = {
             TERM = 'xterm-256color',
@@ -151,7 +155,6 @@ function M.run_command(command_name)
     if not vim.api.nvim_win_is_valid(state.floating.win) then
       state.floating = create_float_term { buf = state.floating.buf }
 
-      vim.notify(string.format('Terminal Command %s', command), vim.log.levels.INFO)
       vim.fn.termopen(command, {
         env = {
           TERM = 'xterm-256color',
