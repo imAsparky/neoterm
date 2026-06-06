@@ -1,5 +1,14 @@
 # Neoterm
 
+[![Project Status: Moved to https://codeberg.org/imAsparky/neoterm – The project has been moved to a new location, and the version at that location should be considered authoritative.](https://www.repostatus.org/badges/latest/moved.svg)](https://www.repostatus.org/#moved)
+
+> **This GitHub repository has moved and is no longer updated here.**
+>
+> Development of Neoterm continues on Codeberg:
+> https://codeberg.org/imAsparky/neoterm
+>
+> Please update your bookmarks and plugin manager to install from the new location.
+
 A Neovim plugin, with a persistent floating terminal window with (Python in Linux) 
 virtual environment activation.
 
@@ -32,6 +41,18 @@ of tmux for bigger projects, we're perfect for those smaller coding adventures! 
 ## Installation
 
 ### Using [lazy.nvim](https://github.com/folke/lazy.nvim) (recommended):
+
+Codeberg (current home):
+```lua
+{
+  url = "https://codeberg.org/imAsparky/neoterm",
+  opts = {
+    key_prefix = "n", -- default menu key prefix
+  },
+}
+```
+
+GitHub (archived mirror):
 ```lua
 {
   "imAsparky/neoterm",
@@ -42,6 +63,21 @@ of tmux for bigger projects, we're perfect for those smaller coding adventures! 
 ```
 
 ### Using [packer.nvim](https://github.com/wbthomason/packer.nvim):
+
+Codeberg (current home):
+```lua
+use {
+  'https://codeberg.org/imAsparky/neoterm',
+  requires = {'folke/which-key.nvim'},
+  config = function()
+    require('neoterm').setup({
+      key_prefix = "n", -- default menu key prefix
+    })
+  end
+}
+```
+
+GitHub (archived mirror):
 ```lua
 use {
   'imAsparky/neoterm',
@@ -60,7 +96,10 @@ use {
 Plug 'folke/which-key.nvim'
 
 " Then install neoterm
-Plug 'imAsparky/neoterm'
+" Codeberg (current home):
+Plug 'https://codeberg.org/imAsparky/neoterm'
+" GitHub (archived mirror):
+" Plug 'imAsparky/neoterm'
 
 " After installing, in your init.vim/init.lua:
 lua require('neoterm').setup({
@@ -88,7 +127,7 @@ can easily pick a different letter:
 
 ```lua
 {
-  "imAsparky/neoterm",
+  url = "https://codeberg.org/imAsparky/neoterm",
   opts = {
     key_prefix = 't'  -- Change 'n' to any other unused letter
   },
